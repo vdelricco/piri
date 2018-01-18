@@ -7,6 +7,7 @@ import android.widget.TextView;
 
 import com.raqun.PiriActivity;
 import com.raqun.PiriParam;
+import com.raqun.piri.sample.model.Book;
 
 
 /**
@@ -17,12 +18,16 @@ import com.raqun.PiriParam;
 public class SecondActivity extends AppCompatActivity {
     private static final String BUNDLE_ID = "extra_key";
     private static final String BUNDLE_NAME = "extra_name";
+    private static final String BUNDLE_BOOK = "extra_book";
 
     @PiriParam(key = BUNDLE_ID)
     private Long id;
 
     @PiriParam(key = BUNDLE_NAME)
     private String name;
+
+    @PiriParam(key = BUNDLE_BOOK)
+    private Book book;
 
     // This is not a PiriParam so it's not passing by bundle in new intent.
     private String description;
@@ -36,13 +41,20 @@ public class SecondActivity extends AppCompatActivity {
         if (bundle != null) {
             id = bundle.getLong(BUNDLE_ID);
             name = bundle.getString(BUNDLE_NAME);
+            book = (Book) bundle.getSerializable(BUNDLE_BOOK);
         }
 
         // INIT UI
         final TextView textViewId = (TextView) findViewById(R.id.textview_id);
-        textViewId.setText("The id passed with Piri " + id);
+        textViewId.setText("The id passed with Piri: " + id);
 
         final TextView textViewName = (TextView) findViewById(R.id.textview_name);
-        textViewName.setText("The name passed with Piri " + name);
+        textViewName.setText("The name passed with Piri: " + name);
+
+        final TextView textViewBookId = (TextView) findViewById(R.id.textview_book_id);
+        textViewBookId.setText("The book id passed with Piri: " + book.getBookId());
+
+        final TextView textViewBookName = (TextView) findViewById(R.id.textview_book_name);
+        textViewBookName.setText("The book name passed with Piri: " + book.getBookName());
     }
 }

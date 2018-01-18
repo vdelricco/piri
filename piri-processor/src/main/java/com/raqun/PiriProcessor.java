@@ -2,13 +2,11 @@ package com.raqun;
 
 import com.squareup.javapoet.ClassName;
 import com.squareup.javapoet.MethodSpec;
-import com.squareup.javapoet.TypeName;
+import com.squareup.javapoet.ParameterSpec;
 import com.squareup.javapoet.TypeSpec;
 
 import java.io.IOException;
-import java.lang.reflect.ParameterizedType;
 import java.util.ArrayList;
-import java.util.Arrays;
 import java.util.List;
 import java.util.Set;
 
@@ -20,13 +18,10 @@ import javax.lang.model.element.Element;
 import javax.lang.model.element.ElementKind;
 import javax.lang.model.element.Modifier;
 import javax.lang.model.element.TypeElement;
-import javax.lang.model.element.VariableElement;
-import javax.lang.model.type.TypeMirror;
 import javax.tools.Diagnostic;
 
 @SupportedAnnotationTypes({
         "com.raqun.PiriActivity",
-        "com.raqun.PiriFragment",
         "com.raqun.PiriParam",
 })
 public final class PiriProcessor extends AbstractProcessor {
@@ -35,31 +30,19 @@ public final class PiriProcessor extends AbstractProcessor {
     private static final String PACKAGE_NAME = "com.raqun.piri.sample";
 
     private static final String CLASS_NAME_INTENT_FACTORY = "PiriIntentFactory";
-    private static final String CLASS_NAME_INSTANCE_FACTORY = "PiriInstanceFactory";
 
     private static final ClassName intentClass = ClassName.get("android.content", "Intent");
     private static final ClassName contextClass = ClassName.get("android.content", "Context");
-    private static final ClassName bundleClass = ClassName.get("android.os", "Bundle");
+    private static final ClassName nonNullAnnotation = ClassName.get("android.support.annotation", "NonNull");
+
+    private static final ClassName intentCreatorClass = ClassName.get(PACKAGE_NAME, "IntentCreator");
 
     private static final String METHOD_PREFIX_NEW_INTENT = "newIntentFor";
-    private static final String METHOD_PREFIX_NEW_INSTANCE = "newInstanceOf";
 
     private static final String PARAM_NAME_CONTEXT = "context";
     private static final String CLASS_SUFFIX = ".class";
 
-    private static final String BUNDLE_PUT_METHOD_PREFIX = "args.put";
-
-    private static final String PARCELABLE_STATEMENT = "args.putParcelable";
-    private static final String SERIALIZABLE_STATEMENT = "args.putSerializable";
-    private static final String SIMPLE_NAME_BINDER = "IBinder";
-
     private final List<MethodSpec> newIntentMethodSpecs = new ArrayList<>();
-    private final List<MethodSpec> newInstanceMethodSpecs = new ArrayList<>();
-    private static final List<String> availableClasses = Arrays.asList("string",
-            "binder",
-            "bundle",
-            "size",
-            "sizeF");
 
     private boolean HALT = false;
     private int round = -1;
@@ -85,7 +68,8 @@ public final class PiriProcessor extends AbstractProcessor {
         if (roundEnvironment.processingOver()) {
             try {
                 createIntentFactory();
-                createInstanceFactory();
+                createIntentCreator();
+                createAbstractIntentCreator();
                 HALT = true;
             } catch (IOException ex) {
                 processingEnv.getMessager().printMessage(Diagnostic.Kind.ERROR, ex.toString());
@@ -96,7 +80,7 @@ public final class PiriProcessor extends AbstractProcessor {
     }
 
     private boolean processAnnotations(RoundEnvironment roundEnv) {
-        return processActivities(roundEnv) && processFragments(roundEnv);
+        return processActivities(roundEnv);
     }
 
     private boolean processActivities(RoundEnvironment roundEnv) {
@@ -120,27 +104,6 @@ public final class PiriProcessor extends AbstractProcessor {
         return true;
     }
 
-    private boolean processFragments(RoundEnvironment roundEnv) {
-        final Set<? extends Element> elements = roundEnv.getElementsAnnotatedWith(PiriFragment.class);
-
-        if (Utils.isNullOrEmpty(elements)) {
-            return true;
-        }
-
-        for (Element element : elements) {
-            if (element.getKind() != ElementKind.CLASS) {
-                EnvironmentUtil.logError("PiriFragment can only be used for classes!");
-                return false;
-            }
-
-            if (!generateNewInstanceMethod((TypeElement) element)) {
-                return false;
-            }
-        }
-
-        return true;
-    }
-
     private boolean generateNewIntentMethod(TypeElement element) {
         final MethodSpec.Builder navigationMethodSpecBuilder = MethodSpec
                 .methodBuilder(METHOD_PREFIX_NEW_INTENT + element.getSimpleName())
@@ -149,12 +112,12 @@ public final class PiriProcessor extends AbstractProcessor {
                 .addParameter(contextClass, PARAM_NAME_CONTEXT);
 
         final List<KeyElementPair> pairs = findPiriParamFields(element);
+        navigationMethodSpecBuilder.addStatement("final $T intent = new $T($L, $L)",
+                intentClass,
+                intentClass,
+                PARAM_NAME_CONTEXT,
+                element.getSimpleName() + CLASS_SUFFIX);
         if (!Utils.isNullOrEmpty(pairs)) {
-            navigationMethodSpecBuilder.addStatement("final $T intent = new $T($L, $L)",
-                    intentClass,
-                    intentClass,
-                    PARAM_NAME_CONTEXT,
-                    element.getSimpleName() + CLASS_SUFFIX);
             for (KeyElementPair pair : pairs) {
                 navigationMethodSpecBuilder.addParameter(ClassName.get(pair.element.asType()),
                         pair.element.getSimpleName().toString());
@@ -162,49 +125,10 @@ public final class PiriProcessor extends AbstractProcessor {
                         pair.key,
                         pair.element);
             }
-            navigationMethodSpecBuilder.addStatement("return intent");
-        } else {
-            navigationMethodSpecBuilder.addStatement("return new $T($L, $L)",
-                    intentClass,
-                    PARAM_NAME_CONTEXT,
-                    element.getQualifiedName() + CLASS_SUFFIX);
         }
+        navigationMethodSpecBuilder.addStatement("return intent");
 
         newIntentMethodSpecs.add(navigationMethodSpecBuilder.build());
-        return true;
-    }
-
-    private boolean generateNewInstanceMethod(TypeElement element) {
-        final MethodSpec.Builder instanceMethodSpecBuilder = MethodSpec
-                .methodBuilder(METHOD_PREFIX_NEW_INSTANCE + element.getSimpleName())
-                .addModifiers(Modifier.PUBLIC, Modifier.STATIC)
-                .returns(ClassName.get(element));
-
-        final TypeName returnType = ClassName.get(element);
-        final List<KeyElementPair> pairs = findPiriParamFields(element);
-        if (!Utils.isNullOrEmpty(pairs)) {
-            instanceMethodSpecBuilder.addStatement("final $T args = new $T()",
-                    bundleClass,
-                    bundleClass);
-            for (KeyElementPair pair : pairs) {
-                final String statementSuffix = "($S, $L)";
-                final TypeName typeName = ClassName.get(pair.element.asType());
-                instanceMethodSpecBuilder.addParameter(typeName,
-                        pair.element.getSimpleName().toString());
-                instanceMethodSpecBuilder.addStatement(generateArgsStatement((VariableElement) pair.element) + statementSuffix,
-                        pair.key,
-                        pair.element);
-            }
-            instanceMethodSpecBuilder.addStatement("final $T instance = new $T()",
-                    returnType,
-                    returnType);
-            instanceMethodSpecBuilder.addStatement("instance.setArguments(args)");
-            instanceMethodSpecBuilder.addStatement("return instance");
-        } else {
-            instanceMethodSpecBuilder.addStatement("return new $T()", returnType);
-        }
-
-        newInstanceMethodSpecs.add(instanceMethodSpecBuilder.build());
         return true;
     }
 
@@ -227,57 +151,6 @@ public final class PiriProcessor extends AbstractProcessor {
 
         return pairs;
     }
-
-    private static String generateArgsStatement(VariableElement element) {
-        final TypeMirror typeMirror = element.asType();
-        final TypeName typeName = ClassName.get(typeMirror);
-        final String simpleName = element.getSimpleName().toString();
-
-        if (typeName.isPrimitive()) {
-            return generatePutStatementForPrimitives(typeName);
-        }
-
-        if (typeName.isBoxedPrimitive()) {
-            return generatePutStatementForPrimitives(typeName.unbox());
-        }
-
-        if (availableClasses.contains(simpleName)) {
-            if (SIMPLE_NAME_BINDER.equals(simpleName)) {
-                return BUNDLE_PUT_METHOD_PREFIX + SIMPLE_NAME_BINDER.substring(1);
-            }
-
-            return generatePutStatement(simpleName);
-        }
-
-        if (EnvironmentUtil.isParcelable(typeMirror)) {
-            return PARCELABLE_STATEMENT;
-        }
-
-        if (EnvironmentUtil.isSerializable(typeMirror)) {
-            return SERIALIZABLE_STATEMENT;
-        }
-
-        EnvironmentUtil.logError(simpleName);
-        throw new IllegalArgumentException("Unsupported type!");
-    }
-
-    private static String generatePutStatementForPrimitives(TypeName typeName) {
-        if (!typeName.isPrimitive()) {
-            throw new IllegalArgumentException("Type must be primitive!");
-        }
-
-        return generatePutStatement(typeName.toString());
-    }
-
-    private static String generatePutStatement(String simpleName) {
-        final StringBuilder statementBuilder = new StringBuilder();
-        statementBuilder.append(BUNDLE_PUT_METHOD_PREFIX)
-                .append(Character.toUpperCase(simpleName.charAt(0)))
-                .append(simpleName.substring(1));
-
-        return statementBuilder.toString();
-    }
-
     private void createIntentFactory() throws IOException {
         final TypeSpec.Builder builder = TypeSpec.classBuilder(CLASS_NAME_INTENT_FACTORY);
         builder.addModifiers(Modifier.PUBLIC, Modifier.FINAL);
@@ -289,14 +162,35 @@ public final class PiriProcessor extends AbstractProcessor {
         EnvironmentUtil.generateFile(builder.build(), PACKAGE_NAME);
     }
 
-    private void createInstanceFactory() throws IOException {
-        final TypeSpec.Builder builder = TypeSpec.classBuilder(CLASS_NAME_INSTANCE_FACTORY);
-        builder.addModifiers(Modifier.PUBLIC, Modifier.FINAL);
+    private void createIntentCreator() throws IOException {
+        TypeSpec intentCreator = TypeSpec.interfaceBuilder("IntentCreator")
+                .addModifiers(Modifier.PUBLIC)
+                .addMethod(MethodSpec.methodBuilder("create")
+                        .addModifiers(Modifier.PUBLIC, Modifier.ABSTRACT)
+                        .returns(intentClass)
+                        .build())
+                .build();
 
-        for (MethodSpec methodSpec : newInstanceMethodSpecs) {
-            builder.addMethod(methodSpec);
-        }
+        EnvironmentUtil.generateFile(intentCreator, PACKAGE_NAME);
+    }
 
-        EnvironmentUtil.generateFile(builder.build(), PACKAGE_NAME);
+    private void createAbstractIntentCreator() throws IOException {
+        ParameterSpec nonNullContext = ParameterSpec.builder(contextClass, "context")
+                .addAnnotation(nonNullAnnotation)
+                .build();
+
+        MethodSpec constructor = MethodSpec.constructorBuilder()
+                .addParameter(nonNullContext)
+                .addStatement("this.context = context")
+                .build();
+
+        TypeSpec abstractIntentCreator = TypeSpec.classBuilder("AbstractIntentCreator")
+                .addModifiers(Modifier.PUBLIC, Modifier.ABSTRACT)
+                .addSuperinterface(intentCreatorClass)
+                .addField(contextClass, "context", Modifier.PROTECTED, Modifier.FINAL)
+                .addMethod(constructor)
+                .build();
+
+        EnvironmentUtil.generateFile(abstractIntentCreator, PACKAGE_NAME);
     }
 }
