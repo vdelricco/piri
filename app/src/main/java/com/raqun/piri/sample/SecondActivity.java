@@ -16,9 +16,9 @@ import com.raqun.piri.sample.model.Book;
 
 @PiriActivity
 public class SecondActivity extends AppCompatActivity {
-    private static final String BUNDLE_ID = "extra_key";
-    private static final String BUNDLE_NAME = "extra_name";
-    private static final String BUNDLE_BOOK = "extra_book";
+    private static final String BUNDLE_ID = "extraKey";
+    private static final String BUNDLE_NAME = "extraName";
+    private static final String BUNDLE_BOOK = "extraBook";
 
     @PiriParam(key = BUNDLE_ID)
     private Long id;

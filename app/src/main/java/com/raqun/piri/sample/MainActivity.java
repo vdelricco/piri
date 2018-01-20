@@ -23,13 +23,15 @@ public class MainActivity extends AppCompatActivity {
         final Book book = new Book();
         book.setBookId(8006);
         book.setBookName("BookTest");
-        IntentCreator creator;
-        AbstractIntentCreator yes;
 
         navButton.setOnClickListener(new View.OnClickListener() {
             @Override
             public void onClick(View view) {
-                startActivity(PiriIntentFactory.newIntentForSecondActivity(MainActivity.this, id, name, book));
+                startActivity(new SecondActivityIntentCreator(MainActivity.this)
+                        .extraBook(book)
+                        .extraKey(id)
+                        .extraName(name)
+                        .create());
             }
         });
     }
