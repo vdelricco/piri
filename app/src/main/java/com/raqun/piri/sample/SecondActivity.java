@@ -9,7 +9,6 @@ import com.raqun.PiriActivity;
 import com.raqun.PiriParam;
 import com.raqun.piri.sample.model.Book;
 
-
 /**
  * Created by tyln on 09/05/2017.
  */

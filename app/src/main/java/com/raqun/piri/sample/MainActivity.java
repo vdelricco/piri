@@ -1,5 +1,6 @@
 package com.raqun.piri.sample;
 
+import android.content.Intent;
 import android.os.Bundle;
 import android.support.v7.app.AppCompatActivity;
 import android.view.View;
@@ -27,11 +28,12 @@ public class MainActivity extends AppCompatActivity {
         navButton.setOnClickListener(new View.OnClickListener() {
             @Override
             public void onClick(View view) {
-                startActivity(new SecondActivityIntentCreator(MainActivity.this)
-                        .extraBook(book)
-                        .extraKey(id)
-                        .extraName(name)
-                        .create());
+                Intent intent = new SecondActivityIntentCreator(MainActivity.this)
+                        .book(book)
+                        .id(id)
+                        .name(name)
+                        .create();
+                startActivity(intent);
             }
         });
     }

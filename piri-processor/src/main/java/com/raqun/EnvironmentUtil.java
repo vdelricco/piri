@@ -23,6 +23,10 @@ public final class EnvironmentUtil {
         processingEnvironment = environment;
     }
 
+    public static ProcessingEnvironment getProcessingEnvironment() {
+        return processingEnvironment;
+    }
+
     public static void logError(String message, Element element) {
         processingEnvironment.getMessager().printMessage(Diagnostic.Kind.ERROR, message, element);
     }
