@@ -9,7 +9,7 @@ public class ExampleActivity extends AppCompatActivity {
 ```
 private int numberToDisplay
 private String stringToDisplay
-private DataModel dataModel; // parcelable or serializable
+private DataModel dataModel; // Parcelable or Serializable
 ```
 
 With Piri, you can generate an Intent builder for `ExampleActivity`, and it only requires a few annotations.
@@ -20,7 +20,7 @@ public class ExampleActivity extendsAppCompatActivity {
     private static String STRING_KEY = "extraString";
     private static String DATA_MODEL_KEY = "extraDataModel";
     
-    @PiriParam(key = NUMBER_KEY) // the value of key also be the builder method name ("extraNumber")
+    @PiriParam(key = NUMBER_KEY)
     private int numberToDisplay;
     
     @PiriParam(key = STRING_KEY)
@@ -36,9 +36,9 @@ Okay cool! But how do we use it?
 When you build your project, a class called `ExampleActivityIntentCreator` will be generated:
 ```
 Intent intent = new ExampleActivityIntentCreator(context)
-        .extraNumber(number)
-        .extraString(string)
-        .extraDataModel(dataModel)
+        .numberToDisplay(number)
+        .stringToDisplay(string)
+        .dataModel(dataModel)
         .create();
 startActivity(intent);
 ```
