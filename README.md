@@ -7,7 +7,7 @@ public class ExampleActivity extends AppCompatActivity {
 
 `ExampleActivity` may have a few parameters it receives from another `Activity`:
 ```java
-private int numberToDisplay
+private int numberToDisplay // This param is required for ExampleActivity to start successfully!
 private String stringToDisplay
 private DataModel dataModel; // Parcelable or Serializable
 ```
@@ -20,7 +20,7 @@ public class ExampleActivity extendsAppCompatActivity {
     private static String STRING_KEY = "extraString";
     private static String DATA_MODEL_KEY = "extraDataModel";
     
-    @PiriParam(key = NUMBER_KEY)
+    @PiriParam(key = NUMBER_KEY, required = true)
     private int numberToDisplay;
     
     @PiriParam(key = STRING_KEY)
@@ -35,8 +35,8 @@ public class ExampleActivity extendsAppCompatActivity {
 Okay cool! But how do we use it?
 When you build your project, a class called `ExampleActivityIntentCreator` will be generated:
 ```java
-Intent intent = new ExampleActivityIntentCreator(context)
-        .numberToDisplay(number)
+// number gets created as a constructor param due to being required
+Intent intent = new ExampleActivityIntentCreator(context, number)
         .stringToDisplay(string)
         .dataModel(dataModel)
         .create();
@@ -52,12 +52,21 @@ protected void onCreate(@Nullable Bundle savedInstanceState) {
 
     final Bundle bundle = getIntent().getExtras();
     if (bundle != null) {
-        id = bundle.getLong(NUMBER_KEY);
+        id = bundle.getInt(NUMBER_KEY);
         string = bundle.getString(STRING_KEY);
         dataModel = (DataModel) bundle.getSerializable(DATA_MODEL_KEY);
     }
     
     ...
+```
+
+What if `ExampleActivity` needs flags? The generated class has a helper method for that!
+```java
+Intent intent = new ExampleActivityIntentCreator(context, number)
+        .stringToDisplay(string)
+        .dataModel(dataModel)
+        .addFlags(Intent.FLAG_ACTIVITY_CLEAR_TASK, Intent.FLAG_ACTIVITY_NEW_TASK)
+        .create();
 ```
 
 ## Where Piri comes from?
