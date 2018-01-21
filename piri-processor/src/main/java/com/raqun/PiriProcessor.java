@@ -87,17 +87,17 @@ public final class PiriProcessor extends AbstractProcessor {
         final ClassName activityIntentCreatorClassName =
                 ClassName.get(activityPackageName,activitySimpleName + "IntentCreator");
 
-        /* TODO: Add required params in constructor */
-        final MethodSpec constructor = MethodSpec.constructorBuilder()
+        /* Begin creating the constructor. More may be added if any params are required */
+        final MethodSpec.Builder constructorBuilder = MethodSpec.constructorBuilder()
                 .addParameter(nonNullContextParam)
                 .addStatement("$L.$L = new $T($L, $T.class)",
                         "this",
                         "intent",
                         intentClass,
                         "context",
-                        element.asType())
-                .build();
+                        element.asType());
 
+        /* Create the intent field which exists in all intent creators */
         final FieldSpec intentField = FieldSpec.builder(intentClass, "intent")
                 .addModifiers(Modifier.PRIVATE, Modifier.FINAL)
                 .build();
@@ -112,43 +112,65 @@ public final class PiriProcessor extends AbstractProcessor {
 
         /* Start building the `create` method of the intent creator. We will
            add statements as we loop through the KeyElementPairs */
-        MethodSpec.Builder create = MethodSpec.methodBuilder("create")
+        MethodSpec.Builder createMethodBuilder = MethodSpec.methodBuilder("create")
                 .addModifiers(Modifier.PUBLIC)
                 .returns(intentClass);
 
+        /* Loops through all piri params */
         if (!Utils.isNullOrEmpty(pairs)) {
             for (KeyElementPair pair : pairs) {
 
-                /* The name of the variable itself (int i; would be "i" */
+                /* The name of the variable itself (int i; would be "i") */
                 final String elementName = pair.element.getSimpleName().toString();
-
-                /* Create a builder method that will be added to the intent creator */
-                final MethodSpec builderMethod = MethodSpec.methodBuilder(pair.element.getSimpleName().toString())
-                        .addParameter(ClassName.get(pair.element.asType()), elementName)
-                        .addStatement("this." + elementName + " = " + elementName)
-                        .addStatement("return this")
-                        .returns(activityIntentCreatorClassName)
-                        .build();
 
                 /* Create the field that will hold a param for the intent creator
                     TODO: Make final if it's a required param */
-                final FieldSpec field = FieldSpec
-                        .builder(ClassName.get(pair.element.asType()).box(), elementName, Modifier.PRIVATE)
-                        .initializer("$L", "null")
-                        .build();
+                final FieldSpec.Builder fieldBuilder = FieldSpec
+                        .builder(ClassName.get(pair.element.asType()).box(), elementName, Modifier.PRIVATE);
 
-                /* Add a statement in the create method to add the param to the intent if not null */
-                create.beginControlFlow("if ($L != null)", elementName)
-                        .addStatement("intent.putExtra($S, $L)", pair.key, elementName)
-                        .endControlFlow();
+                /* If the param is required, accept it in the constructor and don't create builder method */
+                if (pair.required) {
+                    /* The required param is annotated NonNull */
+                    ParameterSpec requiredParam = ParameterSpec.builder(ClassName.get(pair.element.asType()).box(), elementName)
+                            .addAnnotation(nonNullAnnotation)
+                            .build();
+
+                    /* Accept and set the param in the constructor */
+                    constructorBuilder.addParameter(requiredParam);
+                    constructorBuilder.addStatement("$L.$L = $L", "this", elementName, elementName);
+
+                    /* Set corresponding field to final since it gets set in constructor */
+                    fieldBuilder.addModifiers(Modifier.FINAL);
+
+                    /* Always add required param to intent in create method */
+                    createMethodBuilder.addStatement("intent.putExtra($S, $L)", pair.key, elementName);
+                } else {
+                    /* Create a builder method that will be added to the intent creator */
+                    final MethodSpec builderMethod = MethodSpec.methodBuilder(pair.element.getSimpleName().toString())
+                            .addParameter(ClassName.get(pair.element.asType()), elementName)
+                            .addStatement("this." + elementName + " = " + elementName)
+                            .addStatement("return this")
+                            .returns(activityIntentCreatorClassName)
+                            .build();
+                    builderMethods.add(builderMethod);
+
+                    /* Set non-required field to null */
+                    fieldBuilder.initializer("$L", "null");
+
+                    /* Add a statement in the create method to add the param to the intent if not null */
+                    createMethodBuilder.beginControlFlow("if ($L != null)", elementName)
+                            .addStatement("intent.putExtra($S, $L)", pair.key, elementName)
+                            .endControlFlow();
+                }
                 /* Add corresponding builder methods and fields to be added to the intent creator */
-                builderMethods.add(builderMethod);
-                fields.add(field);
+                fields.add(fieldBuilder.build());
             }
         }
 
-        create.addStatement("return $L", "intent");
+        /* Add the final statement to the create method */
+        createMethodBuilder.addStatement("return $L", "intent");
 
+        /* Create addFlags helper method */
         MethodSpec addFlags = MethodSpec.methodBuilder("addFlags")
                 .varargs(true)
                 .addParameter(ArrayTypeName.of(TypeName.INT), "flags")
@@ -164,8 +186,8 @@ public final class PiriProcessor extends AbstractProcessor {
                 TypeSpec.classBuilder(element.getSimpleName() + CLASS_NAME_INTENT_CREATOR_SUFFIX)
                 .addModifiers(Modifier.PUBLIC)
                 .addFields(fields)
-                .addMethod(constructor)
-                .addMethod(create.build())
+                .addMethod(constructorBuilder.build())
+                .addMethod(createMethodBuilder.build())
                 .addMethods(builderMethods)
                 .addMethod(addFlags)
                 .build();
@@ -199,7 +221,7 @@ public final class PiriProcessor extends AbstractProcessor {
                 }
 
                 /* Add to our list of PiriParam KeyElementPairs */
-                pairs.add(new KeyElementPair(piriAnnotation.key(), element));
+                pairs.add(new KeyElementPair(piriAnnotation.key(), piriAnnotation.required(), element));
             }
         }
 

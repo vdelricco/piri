@@ -28,9 +28,8 @@ public class MainActivity extends AppCompatActivity {
         navButton.setOnClickListener(new View.OnClickListener() {
             @Override
             public void onClick(View view) {
-                Intent intent = new SecondActivityIntentCreator(MainActivity.this)
+                Intent intent = new SecondActivityIntentCreator(MainActivity.this, id, 38)
                         .book(book)
-                        .id(id)
                         .name(name)
                         .addFlags(Intent.FLAG_ACTIVITY_CLEAR_TASK, Intent.FLAG_ACTIVITY_NEW_TASK)
                         .create();

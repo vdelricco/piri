@@ -25,12 +25,7 @@
         android:layout_height="wrap_content" />
 
     <TextView
-        android:id="@+id/textview_user_id"
-        android:layout_width="match_parent"
-        android:layout_height="wrap_content" />
-
-    <TextView
-        android:id="@+id/textview_user_name"
+        android:id="@+id/textview_integer"
         android:layout_width="match_parent"
         android:layout_height="wrap_content" />
 

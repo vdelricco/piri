@@ -20,7 +20,7 @@ public class SecondActivity extends AppCompatActivity {
     private static final String BUNDLE_BOOK = "extraBook";
     private static final String BUNDLE_INT = "extraInt";
 
-    @PiriParam(key = BUNDLE_ID)
+    @PiriParam(key = BUNDLE_ID, required = true)
     private Long id;
 
     @PiriParam(key = BUNDLE_NAME)
@@ -29,7 +29,7 @@ public class SecondActivity extends AppCompatActivity {
     @PiriParam(key = BUNDLE_BOOK)
     private Book book;
 
-    @PiriParam(key = BUNDLE_INT)
+    @PiriParam(key = BUNDLE_INT, required = true)
     private int integer;
 
     // This is not a PiriParam so it's not passing by bundle in new intent.
@@ -60,5 +60,8 @@ public class SecondActivity extends AppCompatActivity {
 
         final TextView textViewBookName = (TextView) findViewById(R.id.textview_book_name);
         textViewBookName.setText("The book name passed with Piri: " + book.getBookName());
+
+        final TextView textViewInteger = (TextView) findViewById(R.id.textview_integer);
+        textViewInteger.setText("The integer name passed with Piri: " + integer);
     }
 }

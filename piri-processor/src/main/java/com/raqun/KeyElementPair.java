@@ -8,10 +8,12 @@ import javax.lang.model.element.Element;
 
 final class KeyElementPair {
     final String key;
+    final boolean required;
     final Element element;
 
-    KeyElementPair(String key, Element element) {
+    KeyElementPair(String key, Boolean required, Element element) {
         this.key = key;
+        this.required = required;
         this.element = element;
     }
 }
