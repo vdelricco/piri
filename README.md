@@ -1,19 +1,19 @@
 ## Example usage
 
 Consider an `Activity` you would like to start, `ExampleActivity`:
-```
+```java
 public class ExampleActivity extends AppCompatActivity {
 ```
 
 `ExampleActivity` may have a few parameters it receives from another `Activity`:
-```
+```java
 private int numberToDisplay
 private String stringToDisplay
 private DataModel dataModel; // Parcelable or Serializable
 ```
 
 With Piri, you can generate an Intent builder for `ExampleActivity`, and it only requires a few annotations.
-```
+```java
 @PiriActivity
 public class ExampleActivity extendsAppCompatActivity {
     private static String NUMBER_KEY = "extraNumber";
@@ -34,7 +34,7 @@ public class ExampleActivity extendsAppCompatActivity {
 
 Okay cool! But how do we use it?
 When you build your project, a class called `ExampleActivityIntentCreator` will be generated:
-```
+```java
 Intent intent = new ExampleActivityIntentCreator(context)
         .numberToDisplay(number)
         .stringToDisplay(string)
@@ -44,7 +44,7 @@ startActivity(intent);
 ```
 
 Easy! You can then retrieve your data when `ExampleActivity` is started:
-```
+```java
 @Override
 protected void onCreate(@Nullable Bundle savedInstanceState) {
     super.onCreate(savedInstanceState);
