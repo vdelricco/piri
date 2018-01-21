@@ -18,6 +18,7 @@ public class SecondActivity extends AppCompatActivity {
     private static final String BUNDLE_ID = "extraKey";
     private static final String BUNDLE_NAME = "extraName";
     private static final String BUNDLE_BOOK = "extraBook";
+    private static final String BUNDLE_INT = "extraInt";
 
     @PiriParam(key = BUNDLE_ID)
     private Long id;
@@ -27,6 +28,9 @@ public class SecondActivity extends AppCompatActivity {
 
     @PiriParam(key = BUNDLE_BOOK)
     private Book book;
+
+    @PiriParam(key = BUNDLE_INT)
+    private int integer;
 
     // This is not a PiriParam so it's not passing by bundle in new intent.
     private String description;
@@ -41,6 +45,7 @@ public class SecondActivity extends AppCompatActivity {
             id = bundle.getLong(BUNDLE_ID);
             name = bundle.getString(BUNDLE_NAME);
             book = (Book) bundle.getSerializable(BUNDLE_BOOK);
+            integer = bundle.getInt(BUNDLE_INT);
         }
 
         // INIT UI

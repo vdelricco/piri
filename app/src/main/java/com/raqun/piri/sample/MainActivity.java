@@ -32,6 +32,7 @@ public class MainActivity extends AppCompatActivity {
                         .book(book)
                         .id(id)
                         .name(name)
+                        .addFlags(Intent.FLAG_ACTIVITY_CLEAR_TASK, Intent.FLAG_ACTIVITY_NEW_TASK)
                         .create();
                 startActivity(intent);
             }
