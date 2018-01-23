@@ -14,7 +14,6 @@ private DataModel dataModel; // Parcelable or Serializable
 
 With Piri, you can generate an Intent builder for `ExampleActivity`, and it only requires a few annotations.
 ```java
-@PiriActivity
 public class ExampleActivity extendsAppCompatActivity {    
     @PiriParam(required = true)
     protected int numberToDisplay;
