@@ -1,16 +1,13 @@
 package com.raqun;
 
-import com.squareup.javapoet.ArrayTypeName;
 import com.squareup.javapoet.ClassName;
-import com.squareup.javapoet.FieldSpec;
-import com.squareup.javapoet.MethodSpec;
 import com.squareup.javapoet.ParameterSpec;
-import com.squareup.javapoet.TypeName;
-import com.squareup.javapoet.TypeSpec;
 
 import java.io.IOException;
 import java.util.ArrayList;
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
 import java.util.Set;
 
 import javax.annotation.processing.AbstractProcessor;
@@ -20,7 +17,6 @@ import javax.annotation.processing.SupportedAnnotationTypes;
 import javax.lang.model.SourceVersion;
 import javax.lang.model.element.Element;
 import javax.lang.model.element.ElementKind;
-import javax.lang.model.element.Modifier;
 import javax.lang.model.element.TypeElement;
 
 @SupportedAnnotationTypes({
@@ -28,13 +24,13 @@ import javax.lang.model.element.TypeElement;
         "com.raqun.PiriParam",
 })
 public final class PiriProcessor extends AbstractProcessor {
-    private static final String CLASS_NAME_INTENT_CREATOR_SUFFIX = "IntentCreator";
+    private final Map<TypeElement, List<KeyElementPair>> activityParamMap = new HashMap<>();
 
-    private static final ClassName intentClass = ClassName.get("android.content", "Intent");
-    private static final ClassName contextClass = ClassName.get("android.content", "Context");
-    private static final ClassName nonNullAnnotation = ClassName.get("android.support.annotation", "NonNull");
+    public static final ClassName intentClass = ClassName.get("android.content", "Intent");
+    public static final ClassName contextClass = ClassName.get("android.content", "Context");
+    public static final ClassName nonNullAnnotation = ClassName.get("android.support.annotation", "NonNull");
 
-    private static final ParameterSpec nonNullContextParam = ParameterSpec.builder(contextClass, "context").addAnnotation(nonNullAnnotation).build();
+    public static final ParameterSpec nonNullContextParam = ParameterSpec.builder(contextClass, "context").addAnnotation(nonNullAnnotation).build();
 
     @Override
     public SourceVersion getSupportedSourceVersion() {
@@ -63,8 +59,12 @@ public final class PiriProcessor extends AbstractProcessor {
                 return false;
             }
 
+            activityParamMap.put((TypeElement) element, findPiriParamFields(element));
+        }
+
+        for (TypeElement element : activityParamMap.keySet()) {
             try {
-                generateActivityIntentCreator((TypeElement) element);
+                generateIntentCreatorForActivity(element, activityParamMap.get(element));
             } catch (IOException e) {
                 return false;
             }
@@ -73,138 +73,16 @@ public final class PiriProcessor extends AbstractProcessor {
         return true;
     }
 
-    private void generateActivityIntentCreator(TypeElement element) throws IOException {
-        /* The package of the activity we are making an intent creator for */
-        final String activityPackageName = EnvironmentUtil.getProcessingEnvironment()
-                .getElementUtils()
-                .getPackageOf(element)
-                .toString();
-
-        /* Simple name of the activity */
-        final String activitySimpleName = element.getSimpleName().toString();
-
-        /* Activity intent creator class name (The one to be built) */
-        final ClassName activityIntentCreatorClassName =
-                ClassName.get(activityPackageName,activitySimpleName + "IntentCreator");
-
-        /* Begin creating the constructor. More may be added if any params are required */
-        final MethodSpec.Builder constructorBuilder = MethodSpec.constructorBuilder()
-                .addParameter(nonNullContextParam)
-                .addStatement("$L.$L = new $T($L, $T.class)",
-                        "this",
-                        "intent",
-                        intentClass,
-                        "context",
-                        element.asType());
-
-        /* Create the intent field which exists in all intent creators */
-        final FieldSpec intentField = FieldSpec.builder(intentClass, "intent")
-                .addModifiers(Modifier.PRIVATE, Modifier.FINAL)
-                .build();
-
-        /* Grab Piri params */
-        final List<KeyElementPair> pairs = findPiriParamFields(element);
-
-        /* Lists of items we will build our intent creator with */
-        final List<MethodSpec> builderMethods = new ArrayList<>();
-        final List<FieldSpec> fields = new ArrayList<>();
-        fields.add(intentField);
-
-        /* Start building the `create` method of the intent creator. We will
-           add statements as we loop through the KeyElementPairs */
-        MethodSpec.Builder createMethodBuilder = MethodSpec.methodBuilder("create")
-                .addModifiers(Modifier.PUBLIC)
-                .returns(intentClass);
-
-        /* Loops through all piri params */
-        if (!Utils.isNullOrEmpty(pairs)) {
-            for (KeyElementPair pair : pairs) {
-
-                /* The name of the variable itself (int i; would be "i") */
-                final String elementName = pair.element.getSimpleName().toString();
-
-                /* Create the field that will hold a param for the intent creator
-                    TODO: Make final if it's a required param */
-                final FieldSpec.Builder fieldBuilder = FieldSpec
-                        .builder(ClassName.get(pair.element.asType()).box(), elementName, Modifier.PRIVATE);
-
-                /* If the param is required, accept it in the constructor and don't create builder method */
-                if (pair.required) {
-                    /* The required param is annotated NonNull */
-                    ParameterSpec requiredParam = ParameterSpec.builder(ClassName.get(pair.element.asType()).box(), elementName)
-                            .addAnnotation(nonNullAnnotation)
-                            .build();
-
-                    /* Accept and set the param in the constructor */
-                    constructorBuilder.addParameter(requiredParam);
-                    constructorBuilder.addStatement("$L.$L = $L", "this", elementName, elementName);
-
-                    /* Set corresponding field to final since it gets set in constructor */
-                    fieldBuilder.addModifiers(Modifier.FINAL);
-
-                    /* Always add required param to intent in create method */
-                    createMethodBuilder.addStatement("intent.putExtra($S, $L)", pair.key, elementName);
-                } else {
-                    /* Create a builder method that will be added to the intent creator */
-                    final MethodSpec builderMethod = MethodSpec.methodBuilder(pair.element.getSimpleName().toString())
-                            .addParameter(ClassName.get(pair.element.asType()), elementName)
-                            .addStatement("this." + elementName + " = " + elementName)
-                            .addStatement("return this")
-                            .returns(activityIntentCreatorClassName)
-                            .build();
-                    builderMethods.add(builderMethod);
-
-                    /* Set non-required field to null */
-                    fieldBuilder.initializer("$L", "null");
-
-                    /* Add a statement in the create method to add the param to the intent if not null */
-                    createMethodBuilder.beginControlFlow("if ($L != null)", elementName)
-                            .addStatement("intent.putExtra($S, $L)", pair.key, elementName)
-                            .endControlFlow();
-                }
-                /* Add corresponding builder methods and fields to be added to the intent creator */
-                fields.add(fieldBuilder.build());
-            }
-        }
-
-        /* Add the final statement to the create method */
-        createMethodBuilder.addStatement("return $L", "intent");
-
-        /* Create addFlags helper method */
-        MethodSpec addFlags = MethodSpec.methodBuilder("addFlags")
-                .varargs(true)
-                .addParameter(ArrayTypeName.of(TypeName.INT), "flags")
-                .returns(activityIntentCreatorClassName)
-                .beginControlFlow("for($L $L : $L)", "int", "flag", "flags")
-                .addStatement("$L.$L($L)", "intent", "addFlags", "flag")
-                .endControlFlow()
-                .addStatement("$L $L", "return", "this")
-                .build();
-
-        /* Finally, build the intent creator class! */
-        final TypeSpec activityIntentCreator =
-                TypeSpec.classBuilder(element.getSimpleName() + CLASS_NAME_INTENT_CREATOR_SUFFIX)
-                .addModifiers(Modifier.PUBLIC)
-                .addFields(fields)
-                .addMethod(constructorBuilder.build())
-                .addMethod(createMethodBuilder.build())
-                .addMethods(builderMethods)
-                .addMethod(addFlags)
-                .build();
+    private void generateIntentCreatorForActivity(TypeElement element, List<KeyElementPair> piriParamList) throws IOException {
+        final ActivityIntentCreator activityIntentCreator = new ActivityIntentCreator(element, piriParamList);
 
         /* And generate it */
-        EnvironmentUtil.generateFile(activityIntentCreator, activityPackageName);
+        EnvironmentUtil.generateFile(activityIntentCreator);
     }
 
     private List<KeyElementPair> findPiriParamFields(Element piriClass) {
         /* Grab a list of all the elements of this activity */
         final List<? extends Element> piriClassElements = piriClass.getEnclosedElements();
-
-        /* Return if there are none */
-        if (Utils.isNullOrEmpty(piriClassElements)) {
-            return null;
-        }
-
         final List<KeyElementPair> pairs = new ArrayList<>();
 
         /* Loop through all the elements and find any that are PiriParam annotated */

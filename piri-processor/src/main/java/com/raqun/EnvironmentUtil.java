@@ -1,7 +1,6 @@
 package com.raqun;
 
 import com.squareup.javapoet.JavaFile;
-import com.squareup.javapoet.TypeSpec;
 
 import java.io.IOException;
 
@@ -35,8 +34,8 @@ public final class EnvironmentUtil {
         processingEnvironment.getMessager().printMessage(Diagnostic.Kind.WARNING, message, element);
     }
 
-    public static void generateFile(final TypeSpec typeSpec, String packageName) throws IOException {
-        JavaFile.builder(packageName, typeSpec)
+    public static void generateFile(final Generatable generatable) throws IOException {
+        JavaFile.builder(generatable.getPackage(), generatable.getTypeSpec())
                 .build()
                 .writeTo(processingEnvironment.getFiler());
     }
