@@ -7,15 +7,19 @@ import android.view.View;
 import android.widget.Button;
 
 import com.raqun.PiriActivity;
+import com.raqun.PiriParam;
 import com.raqun.piri.sample.model.Book;
 
 @PiriActivity
 public class MainActivity extends AppCompatActivity {
+    @PiriParam(key = "string")
+    protected String mainString;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_main);
+        Piri.bind(this);
 
         final Button navButton = (Button) findViewById(R.id.nav_button);
 

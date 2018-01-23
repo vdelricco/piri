@@ -29,6 +29,7 @@ import javax.lang.model.type.TypeMirror;
 })
 public final class PiriProcessor extends AbstractProcessor {
     private final Map<TypeElement, List<KeyElementPair>> activityParamMap = new HashMap<>();
+    private final Map<String, TypeSpec.Builder> packageBinderMap = new HashMap<>();
 
     public static final ClassName intentClass = ClassName.get("android.content", "Intent");
     public static final ClassName contextClass = ClassName.get("android.content", "Context");
@@ -74,17 +75,39 @@ public final class PiriProcessor extends AbstractProcessor {
             }
         }
 
+        for (final String packageName : packageBinderMap.keySet()) {
+            final Generatable tempGeneratable = new Generatable() {
+                @Override
+                public String getPackage() {
+                    return packageName;
+                }
+
+                @Override
+                public TypeSpec getTypeSpec() {
+                    return packageBinderMap.get(packageName).build();
+                }
+            };
+
+            try {
+                EnvironmentUtil.generateFile(tempGeneratable);
+            } catch (IOException e) {
+                return false;
+            }
+        }
+
         return true;
     }
 
     private void generateIntentCreatorForActivity(final TypeElement element, List<KeyElementPair> piriParamList) throws IOException {
         final ActivityIntentCreator activityIntentCreator = new ActivityIntentCreator(element, piriParamList);
+        String activityPackage = EnvironmentUtil.getProcessingEnvironment().getElementUtils().getPackageOf(element).toString();
 
         if (!Utils.isNullOrEmpty(piriParamList)) {
+            if (packageBinderMap.get(activityPackage) == null) {
+                packageBinderMap.put(activityPackage, TypeSpec.classBuilder("Piri"));
+            }
 
-            final TypeSpec.Builder piriClassBuilder = TypeSpec.classBuilder("Piri");
-
-            final MethodSpec.Builder bindBuilder = MethodSpec.methodBuilder("bind")
+            MethodSpec.Builder bindBuilder = MethodSpec.methodBuilder("bind")
                     .addModifiers(Modifier.STATIC)
                     .addParameter(ClassName.get(element.asType()), "activity")
                     .addStatement("$T intent = activity.getIntent()", intentClass);
@@ -103,23 +126,8 @@ public final class PiriProcessor extends AbstractProcessor {
                 }
             }
 
-            piriClassBuilder.addMethod(bindBuilder.build());
-
-            final Generatable tempGeneratable = new Generatable() {
-                @Override
-                public String getPackage() {
-                    return EnvironmentUtil.getProcessingEnvironment().getElementUtils().getPackageOf(element).toString();
-                }
-
-                @Override
-                public TypeSpec getTypeSpec() {
-                    return piriClassBuilder.build();
-                }
-            };
-
-            EnvironmentUtil.generateFile(tempGeneratable);
+            packageBinderMap.get(activityPackage).addMethod(bindBuilder.build());
         }
-
 
         /* And generate it */
         EnvironmentUtil.generateFile(activityIntentCreator);
