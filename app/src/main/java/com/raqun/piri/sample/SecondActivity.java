@@ -15,16 +15,16 @@ import com.raqun.piri.sample.model.Book;
 
 @PiriActivity
 public class SecondActivity extends AppCompatActivity {
-    @PiriParam(key = "extraKey", required = true)
+    @PiriParam(required = true)
     protected Long id;
 
-    @PiriParam(key = "extraName")
+    @PiriParam
     protected String name;
 
-    @PiriParam(key = "extraBook")
+    @PiriParam
     protected Book book;
 
-    @PiriParam(key = "extraInt", required = true)
+    @PiriParam(required = true)
     protected Integer integer;
 
     @Override

@@ -144,15 +144,8 @@ public final class PiriProcessor extends AbstractProcessor {
 
             /* Check if it's PiriParam annotated. If so, also ensure we are dealing with a field */
             if ((piriAnnotation != null) && (element.getKind() == ElementKind.FIELD)) {
-                /* Log a warning and ignore the param if the dev didn't provide a key */
-                if (Utils.isNullOrEmpty(piriAnnotation.key())) {
-                    EnvironmentUtil.logWarning("Using PiriParam Annotation without a Key! Field'll be ignored! " +
-                            element.getSimpleName() + " in " + element.getSimpleName(), element);
-                    continue;
-                }
-
                 /* Add to our list of PiriParam KeyElementPairs */
-                pairs.add(new KeyElementPair(piriAnnotation.key(), piriAnnotation.required(), element));
+                pairs.add(new KeyElementPair(element.getSimpleName().toString(), piriAnnotation.required(), element));
             }
         }
 

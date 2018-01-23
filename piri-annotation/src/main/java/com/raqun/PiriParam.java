@@ -11,6 +11,5 @@ import java.lang.annotation.Target;
 @Retention(RetentionPolicy.CLASS)
 @Target(ElementType.FIELD)
 public @interface PiriParam {
-    String key() default "";
     boolean required() default false;
 }

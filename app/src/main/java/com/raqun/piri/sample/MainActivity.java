@@ -12,7 +12,7 @@ import com.raqun.piri.sample.model.Book;
 
 @PiriActivity
 public class MainActivity extends AppCompatActivity {
-    @PiriParam(key = "string")
+    @PiriParam
     protected String mainString;
 
     @Override
