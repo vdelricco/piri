@@ -15,19 +15,15 @@ private DataModel dataModel; // Parcelable or Serializable
 With Piri, you can generate an Intent builder for `ExampleActivity`, and it only requires a few annotations.
 ```java
 @PiriActivity
-public class ExampleActivity extendsAppCompatActivity {
-    private static String NUMBER_KEY = "extraNumber";
-    private static String STRING_KEY = "extraString";
-    private static String DATA_MODEL_KEY = "extraDataModel";
+public class ExampleActivity extendsAppCompatActivity {    
+    @PiriParam(required = true)
+    protected int numberToDisplay;
     
-    @PiriParam(key = NUMBER_KEY, required = true)
-    private int numberToDisplay;
+    @PiriParam
+    protected String stringToDisplay;
     
-    @PiriParam(key = STRING_KEY)
-    private String stringToDisplay;
-    
-    @PiriParam(key = DATA_MODEL_KEY)
-    private DataModel dataModel;
+    @PiriParam
+    protected DataModel dataModel;
     
     ...
 ```
@@ -39,34 +35,21 @@ When you build your project, a class called `ExampleActivityIntentCreator` will 
 Intent intent = new ExampleActivityIntentCreator(context, number)
         .stringToDisplay(string)
         .dataModel(dataModel)
+        .addFlags(Intent.FLAG_ACTIVITY_CLEAR_TASK, Intent.FLAG_ACTIVITY_NEW_TASK)
         .create();
 startActivity(intent);
 ```
 
-Easy! You can then retrieve your data when `ExampleActivity` is started:
+Easy! You can then retrieve your data when `ExampleActivity` is started with `Piri.bind()`:
 ```java
 @Override
 protected void onCreate(@Nullable Bundle savedInstanceState) {
     super.onCreate(savedInstanceState);
     setContentView(R.layout.activity_example);
-
-    final Bundle bundle = getIntent().getExtras();
-    if (bundle != null) {
-        id = bundle.getInt(NUMBER_KEY);
-        string = bundle.getString(STRING_KEY);
-        dataModel = (DataModel) bundle.getSerializable(DATA_MODEL_KEY);
-    }
+    Piri.bind(this)
     
+    // Defined PiriParam variables are set for you
     ...
-```
-
-What if `ExampleActivity` needs flags? The generated class has a helper method for that!
-```java
-Intent intent = new ExampleActivityIntentCreator(context, number)
-        .stringToDisplay(string)
-        .dataModel(dataModel)
-        .addFlags(Intent.FLAG_ACTIVITY_CLEAR_TASK, Intent.FLAG_ACTIVITY_NEW_TASK)
-        .create();
 ```
 
 ## Where Piri comes from?
