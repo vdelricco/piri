@@ -5,7 +5,6 @@ import android.support.annotation.Nullable;
 import android.support.v7.app.AppCompatActivity;
 import android.widget.TextView;
 
-import com.raqun.PiriActivity;
 import com.raqun.PiriParam;
 import com.raqun.piri.sample.model.Book;
 
@@ -13,7 +12,6 @@ import com.raqun.piri.sample.model.Book;
  * Created by tyln on 09/05/2017.
  */
 
-@PiriActivity
 public class SecondActivity extends AppCompatActivity {
     @PiriParam(required = true)
     protected Long id;

@@ -6,11 +6,9 @@ import android.support.v7.app.AppCompatActivity;
 import android.view.View;
 import android.widget.Button;
 
-import com.raqun.PiriActivity;
 import com.raqun.PiriParam;
 import com.raqun.piri.sample.model.Book;
 
-@PiriActivity
 public class MainActivity extends AppCompatActivity {
     @PiriParam
     protected String mainString;

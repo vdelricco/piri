@@ -24,7 +24,6 @@ import javax.lang.model.element.TypeElement;
 import javax.lang.model.type.TypeMirror;
 
 @SupportedAnnotationTypes({
-        "com.raqun.PiriActivity",
         "com.raqun.PiriParam",
 })
 public final class PiriProcessor extends AbstractProcessor {
@@ -51,20 +50,33 @@ public final class PiriProcessor extends AbstractProcessor {
     @Override
     public boolean process(Set<? extends TypeElement> set, RoundEnvironment roundEnvironment) {
         /* Get every element that is annotated with PiriActivity */
-        final Set<? extends Element> elements = roundEnvironment.getElementsAnnotatedWith(PiriActivity.class);
+        final Set<? extends Element> elements = roundEnvironment.getElementsAnnotatedWith(PiriParam.class);
 
         if (Utils.isNullOrEmpty(elements)) {
             return true;
         }
 
         for (Element element : elements) {
-            /* Check if this element is a class AND inherits from Activity */
-            if ((element.getKind() != ElementKind.CLASS) || !EnvironmentUtil.isActivity(element.asType())) {
-                EnvironmentUtil.logError("PiriActivity can only be used for Activity classes!", element);
-                return false;
+            Element enclosingElement = element.getEnclosingElement();
+            boolean alreadyAddedActivity = false;
+            for (TypeElement typeElement : activityParamMap.keySet()) {
+                if (EnvironmentUtil.getProcessingEnvironment().getTypeUtils().isSameType(enclosingElement.asType(), typeElement.asType())) {
+                    alreadyAddedActivity = true;
+                    break;
+                }
             }
 
-            activityParamMap.put((TypeElement) element, findPiriParamFields(element));
+            if (alreadyAddedActivity) {
+                break;
+            }
+
+            /* Check if this element is a class AND inherits from Activity */
+            if ((element.getKind() != ElementKind.FIELD) || !EnvironmentUtil.isActivity(enclosingElement.asType())) {
+                EnvironmentUtil.logError("PiriParams can only be used in Activity classes!", enclosingElement);
+                continue;
+            }
+
+            activityParamMap.put((TypeElement) enclosingElement, findPiriParamFields(enclosingElement));
         }
 
         for (TypeElement element : activityParamMap.keySet()) {
