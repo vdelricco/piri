@@ -1,7 +1,9 @@
 package com.raqun;
 
 import com.squareup.javapoet.ClassName;
+import com.squareup.javapoet.MethodSpec;
 import com.squareup.javapoet.ParameterSpec;
+import com.squareup.javapoet.TypeSpec;
 
 import java.io.IOException;
 import java.util.ArrayList;
@@ -17,7 +19,9 @@ import javax.annotation.processing.SupportedAnnotationTypes;
 import javax.lang.model.SourceVersion;
 import javax.lang.model.element.Element;
 import javax.lang.model.element.ElementKind;
+import javax.lang.model.element.Modifier;
 import javax.lang.model.element.TypeElement;
+import javax.lang.model.type.TypeMirror;
 
 @SupportedAnnotationTypes({
         "com.raqun.PiriActivity",
@@ -73,8 +77,49 @@ public final class PiriProcessor extends AbstractProcessor {
         return true;
     }
 
-    private void generateIntentCreatorForActivity(TypeElement element, List<KeyElementPair> piriParamList) throws IOException {
+    private void generateIntentCreatorForActivity(final TypeElement element, List<KeyElementPair> piriParamList) throws IOException {
         final ActivityIntentCreator activityIntentCreator = new ActivityIntentCreator(element, piriParamList);
+
+        if (!Utils.isNullOrEmpty(piriParamList)) {
+
+            final TypeSpec.Builder piriClassBuilder = TypeSpec.classBuilder("Piri");
+
+            final MethodSpec.Builder bindBuilder = MethodSpec.methodBuilder("bind")
+                    .addModifiers(Modifier.STATIC)
+                    .addParameter(ClassName.get(element.asType()), "activity")
+                    .addStatement("$T intent = activity.getIntent()", intentClass);
+
+            for (KeyElementPair pair : piriParamList) {
+                TypeMirror elementType = pair.element.asType();
+                String elementName = pair.element.getSimpleName().toString();
+                if (EnvironmentUtil.isInt(elementType)) {
+                    bindBuilder.addStatement("activity.$L = intent.getIntExtra($S, -1)", elementName, pair.key);
+                } else if (EnvironmentUtil.isLong(elementType)) {
+                    bindBuilder.addStatement("activity.$L = intent.getLongExtra($S, -1)", elementName, pair.key);
+                } else if (EnvironmentUtil.isString(elementType)) {
+                    bindBuilder.addStatement("activity.$L = intent.getStringExtra($S)", elementName, pair.key);
+                } else if (EnvironmentUtil.isSerializable(elementType)) {
+                    bindBuilder.addStatement("activity.$L = ($T) intent.getSerializableExtra($S)", elementName, pair.element, pair.key);
+                }
+            }
+
+            piriClassBuilder.addMethod(bindBuilder.build());
+
+            final Generatable tempGeneratable = new Generatable() {
+                @Override
+                public String getPackage() {
+                    return EnvironmentUtil.getProcessingEnvironment().getElementUtils().getPackageOf(element).toString();
+                }
+
+                @Override
+                public TypeSpec getTypeSpec() {
+                    return piriClassBuilder.build();
+                }
+            };
+
+            EnvironmentUtil.generateFile(tempGeneratable);
+        }
+
 
         /* And generate it */
         EnvironmentUtil.generateFile(activityIntentCreator);

@@ -15,40 +15,24 @@ import com.raqun.piri.sample.model.Book;
 
 @PiriActivity
 public class SecondActivity extends AppCompatActivity {
-    private static final String BUNDLE_ID = "extraKey";
-    private static final String BUNDLE_NAME = "extraName";
-    private static final String BUNDLE_BOOK = "extraBook";
-    private static final String BUNDLE_INT = "extraInt";
+    @PiriParam(key = "extraKey", required = true)
+    protected Long id;
 
-    @PiriParam(key = BUNDLE_ID, required = true)
-    private Long id;
+    @PiriParam(key = "extraName")
+    protected String name;
 
-    @PiriParam(key = BUNDLE_NAME)
-    private String name;
+    @PiriParam(key = "extraBook")
+    protected Book book;
 
-    @PiriParam(key = BUNDLE_BOOK)
-    private Book book;
-
-    @PiriParam(key = BUNDLE_INT, required = true)
-    private int integer;
-
-    // This is not a PiriParam so it's not passing by bundle in new intent.
-    private String description;
+    @PiriParam(key = "extraInt", required = true)
+    protected Integer integer;
 
     @Override
     protected void onCreate(@Nullable Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_second);
+        Piri.bind(this);
 
-        final Bundle bundle = getIntent().getExtras();
-        if (bundle != null) {
-            id = bundle.getLong(BUNDLE_ID);
-            name = bundle.getString(BUNDLE_NAME);
-            book = (Book) bundle.getSerializable(BUNDLE_BOOK);
-            integer = bundle.getInt(BUNDLE_INT);
-        }
-
-        // INIT UI
         final TextView textViewId = (TextView) findViewById(R.id.textview_id);
         textViewId.setText("The id passed with Piri: " + id);
 
